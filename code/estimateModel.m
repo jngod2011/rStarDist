@@ -1,14 +1,24 @@
 function estimateModel(job_id_in, Worker_id_in)
+% 
+% The code can be run as a script to generate the estimates used in the latest public version of
+% the paper, but the majority of the work was conducted using a scheduler on a cluster and that
+% functionality has been preserved in this code.  Running the code in MATLAB with no inputs
+% should work fine and generate the estimates used in the latest version of the paper.
+%
+% Kurt Lewis
+% August, 2018
 
 % Determine if this is a SLURM-style run (with worker and job IDs) or a stand-alone where we
 % generate fake versions associated with the 
 switch nargin
     
   case 2
+    % This should only be used if ou are using a SLURM-style generator to combine multiple chains
     job_id    = str2double(job_id_in);
     Worker_id = str2double(Worker_id_in);
  
   case 0
+    
     job_id = str2double(datestr(now,'yyyymmdd'));
     Worker_id = str2double(datestr(now,'HHMMSS'));
     
@@ -35,10 +45,12 @@ baseAlt = 1 % 0 = base, 1 = alt
 % Generally, if run on a single machine, it will use the dates to build the rng seed, otherwise it will use SLURM worker
 % IDs if run using a job array (this organization is performed above by setting the Worker_id to
 % the time when using the single machine run above).  Replication of results in WP version
-% current with the first release of this code (June 2018) is accomplished with seed 1234567.
+% current with the first release of the updated paper (August 2018) is accomplished with seed 1234567.
 
 cede = 1234567
 rng(cede)
+
+%% If using on a SLURM_style scheduler, 
 %rng(Worker_id,'twister');
 
 %% MAT file output.
@@ -53,7 +65,7 @@ end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% This block controls whether it is the baseline or the alternative specification being
-%% estimated, BE SURE TO CHANGE THE LL FILES AT THE END OF THE SCRIPT.
+%% estimated 
 
 %% File names and reporting information, Alternative Specification
 if baseAlt == 1
@@ -86,7 +98,7 @@ skip = 25
 %M = 500
 %skip = 25
 
-%%% for directory diagnostics
+%%% for directory checking, diagnostics, etc.
 %runInfo = ['250 burn in, 1 skip with 500 total draws, meant for TESTING']
 %burnIn = 250
 %M = 250
@@ -536,9 +548,10 @@ for (ii = 1:M)
     zDraws(:,ii) = (qqZ'*mTemp)';    
     gDraws(:,ii) = (qqG'*mTemp)';    
     
-    % Generate rStar from the mean state estimates
+    % Generate one-sided mean estimates of rStar from the mean state estimates
     rStarDraws(:,ii) = rCTemp + (qq'*mTemp)';
     
+    % Smoothed built from Carter-Kohn style forward-filter, backward sampled states
     rStarSmoothDraws(:,ii) = rCTemp + (qq'*sTemp)';
     
     % Generate the standard error for rStar from the variance covariance matrix of the
@@ -554,7 +567,10 @@ for (ii = 1:M)
     
 end
 
-% Add the date-time and save the mat file
+%%% Much space can be saved by dropping the draws of the V matrix
+%clear VDrawsSkip
+
+% Save all of the results in a mat file
 sf
 save(sf,'-v7.3')
 disp('Full .mat file saved.');
